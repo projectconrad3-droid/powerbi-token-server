@@ -1,14 +1,90 @@
-{
-  "name": "powerbi-token-server",
-  "version": "1.0.0",
-  "type": "module",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "axios": "^1.6.2",
-    "express": "^4.18.2",
-    "cors": "^2.8.5"
+import express from "express";
+import axios from "axios";
+import cors from "cors";
+
+const app = express();
+
+// ---- CORS MUST COME BEFORE ANY ROUTES ----
+app.use(
+  cors({
+    origin: [
+      "https://groomconsulting.softr.app",
+      "https://groomconsulting.preview.softr.app"
+    ],
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+// -------------------------------------------
+
+// Load from Render environment variables
+const tenantId = process.env.TENANT_ID;
+const clientId = process.env.CLIENT_ID;
+const clientSecret = process.env.CLIENT_SECRET;
+const groupId = process.env.GROUP_ID;
+const reportId = process.env.REPORT_ID;
+const datasetId = process.env.DATASET_ID;
+
+// Simple testing route to confirm email is received
+app.get("/test-email", (req, res) => {
+  res.json({
+    status: "ok",
+    receivedEmail: req.query.email,
+  });
+});
+
+// Main embed-token route
+app.get("/embed-token", async (req, res) => {
+  try {
+    const userEmail = req.query.email;
+
+    if (!userEmail) {
+      return res
+        .status(400)
+        .json({ error: "Missing ?email= parameter in query string" });
+    }
+
+    // 1. Azure token
+    const tokenRes = await axios.post(
+      `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
+      new URLSearchParams({
+        grant_type: "client_credentials",
+        client_id: clientId,
+        client_secret: clientSecret,
+        scope: "https://analysis.windows.net/powerbi/api/.default",
+      })
+    );
+
+    const accessToken = tokenRes.data.access_token;
+
+    // 2. Power BI embed token (with RLS)
+    const embedRes = await axios.post(
+      `https://api.powerbi.com/v1.0/myorg/groups/${groupId}/reports/${reportId}/GenerateToken`,
+      {
+        accessLevel: "view",
+        identities: [
+          {
+            username: userEmail,
+            roles: ["ClientRLS"],
+            datasets: [datasetId],
+          },
+        ],
+      },
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+
+    res.json({
+      embedToken: embedRes.data.token,
+      embedUrl: embedRes.data.embedUrl,
+      reportId,
+    });
+  } catch (error) {
+    console.error("Embed token error:", error.response?.data || error.message);
+    res.status(500).json({ error: "Failed to generate token" });
   }
-}
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () =>
+  console.log(`PowerBI token server running on port ${PORT}`)
+);
