@@ -62,5 +62,11 @@ app.get("/embed-token", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+app.get("/test-email", (req, res) => {
+  const email = req.query.email;
+  console.log("Received email:", email);
+  res.json({ receivedEmail: email });
+});
+
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
