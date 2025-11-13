@@ -4,6 +4,16 @@ import cors from "cors";
 
 const app = express();
 
+
+// ------------------------------------------------------
+// 🔵 ADD THE LOGGING MIDDLEWARE *RIGHT HERE*
+// ------------------------------------------------------
+app.use((req, res, next) => {
+  console.log("INCOMING REQUEST:", req.method, req.url);
+  next();
+});
+
+
 // ------------------------------------------------------
 // CORS MUST BE BEFORE ANY ROUTES
 // Allow both Softr Live + Preview domains
