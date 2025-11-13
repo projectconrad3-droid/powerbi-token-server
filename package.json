@@ -1,5 +1,5 @@
 {
-  "name": "powerbi-render-server",
+  "name": "powerbi-token-server",
   "version": "1.0.0",
   "type": "module",
   "main": "server.js",
@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "axios": "^1.6.2",
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
   }
 }
